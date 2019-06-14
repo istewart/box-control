@@ -8,6 +8,9 @@
   color: white;
   margin: 0 auto;
   min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .form {
@@ -16,7 +19,20 @@
 
 .form-input, .form-select {
   padding: 6px 12px;
-  width: 150px;
+  min-width: 150px;
   margin-bottom: 8px;
   display: block;
+}
+
+.form-select {
+  min-width: 184px;
+}
+
+.form-button {
+  width: 184px;
+  padding: 8px 16px;
+  background: #487ce4;
+  color: white;
+  border: none;
+  border-radius: 3px;
 }

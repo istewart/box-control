@@ -1,75 +1,128 @@
 import React from 'react';
 import './App.css';
 
+import openSocket from 'socket.io-client';
+
+
 class App extends React.Component {
     state = {
-      animal: '',
-      box_number: '',
-      stage: null,
-      optogenetics: null,
-      background_luminensce: 32,
-      size_one: 90,
-      size_two: null,
-      contrast_levels: [255],
+      animalId: '',
+      boxNumber: '',
+      stage: 1,
+      optogenetics: 'None',
+      backgroundLuminensce: 32,
+      sizeOne: 90,
+      sizeTwo: 0,
+      contrastLevels: [255],
+      socket: openSocket(),
     }
+
+    constructor(props) {
+      super(props);
+      
+      this.state.socket.on('todo', () => {
+        alert('event!');
+      });
+    }
+    
 
     onChange = (name, value) => {
       this.setState({[name]: value});
     }
 
-    onSubmit = () => {
-      console.log("todo");
+    onSubmit = (e) => {
+      e.preventDefault();
+      alert("todo");
     }
 
     render() {
+      const {
+        animalId,
+        boxNumber,
+        stage,
+        optogenetics,
+        backgroundLuminensce,
+        sizeOne,
+        sizeTwo,
+        contrastLevels,
+      } = this.state;
+
       return (
         <div className="App">
           <header className="App-header">
             <form className="form">
               <input
                 type="text"
-                name="animal"
+                name="animalId"
                 className="form-input"
-                placeholder="Anima
-                onChange={(e) => this.onChange('todo', e.target.value)}l Id"
+                placeholder="Animal Id"
+                value={animalId}
+                onChange={(e) => this.onChange('animalId', e.target.value)}
               />
               <input
                 type="text"
-                name="box_number"
+                name="boxNumber"
                 className="form-input"
-                placeholder="Box N
-                onChange={(e) => this.onChange('todo', e.target.value)}umber"
+                placeholder="Box Number"
+                value={boxNumber}
+                onChange={(e) => this.onChange('boxNumber', e.target.value)}
               />
               <select
                 name="stage"
                 className="form-select"
+                value={stage}
+                onChange={(e) => this.onChange('stage', e.target.value)}
+              >
+                <option>None</option>
+                <option>Activation</option>
+                <option>Supression</option>
+              </select>
+              <select
+                name="optogenetics"
+                className="form-select"
+                value={optogenetics}
+                onChange={(e) => this.onChange('optogenetics', e.target.value)}
               >
                 <option>1</option>
                 <option>2</option>
                 <option>3</option>
               </select>
               <input
-                type="text"
-                name="animal"
+                type="number"
+                name="backgroundLuminensce"
                 className="form-input"
                 placeholder="todo"
-                onChange={(e) => this.onChange('todo', e.target.value)}
+                value={backgroundLuminensce}
+                onChange={(e) => this.onChange('backgroundLuminensce', e.target.value)}
               />
               <input
                 type="text"
-                name="animal"
+                name="sizeOne"
                 className="form-input"
                 placeholder="todo"
-                onChange={(e) => this.onChange('todo', e.target.value)}
+                value={sizeOne}
+                onChange={(e) => this.onChange('sizeOne', e.target.value)}
               />
               <input
                 type="text"
-                name="animal"
+                name="sizeTwo"
                 className="form-input"
                 placeholder="todo"
-                onChange={(e) => this.onChange('todo', e.target.value)}
+                value={sizeTwo}
+                onChange={(e) => this.onChange('sizeTwo', e.target.value)}
               />
-              <button onClick={this.onSubmit}>
+              <input
+                type="text"
+                name="contrastLevels"
+                className="form-input"
+                placeholder="todo"
+                value={contrastLevels}
+                onChange={(e) => this.onChange('contrastLevels', e.target.value)}
+              />
+              <button
+                className="form-button"
+                onClick={this.onSubmit}
+              >
                 Start Task
               </button>
             </form>
