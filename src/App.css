@@ -7,14 +7,16 @@
   font-size: calc(10px + 2vmin);
   color: white;
   margin: 0 auto;
-  min-height: 100vh;
+  min-height: 85vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  justify-content: space-around;
+  padding-top: 15vh;
 }
 
 .form {
-
+  position: fixed;
+  left: 0;
+  padding: 8px 16px;
 }
 
 .form-input, .form-select {
@@ -34,5 +36,21 @@
   background: #487ce4;
   color: white;
   border: none;
-  border-radius: 3px;
+}
+
+.sessions {
+  position: fixed;
+  right: 0;
+  height: 100vh;
+  border-left: thin solid #ccc;
+  width: 200px;
+}
+
+.session {
+  border-bottom: thin solid #ccc;
+  padding: 6px 12px;
+}
+
+.graphs {
+  background: white;
 }
