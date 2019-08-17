@@ -25,14 +25,21 @@ SECRET_KEY = 'x6f4y^pula=-1=j7ox-fhd6fjo)^i(x3#rheeo(_enb=xs3$7)'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Development hack for getting around CORS.
+CORS_ALLOW_CREDENTIALS = DEBUG
+CORS_ORIGIN_WHITELIST = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+]
 
+ALLOWED_HOSTS = []
 
 # Application definition
 
 INSTALLED_APPS = [
     'channels',
     'sockets',
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,6 +49,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -53,6 +61,15 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'backend.urls'
 ASGI_APPLICATION = 'backend.routing.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 TEMPLATES = [
     {
