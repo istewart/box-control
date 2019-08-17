@@ -13,7 +13,7 @@ export class Form extends React.Component {
         sizeOne: 90,
         sizeTwo: 0,
         contrastLevels: [255],
-        socket: openSocket(),
+        socket: openSocket('localhost:8000/socket.io/'),
         dataPoints: [],
       }
   
