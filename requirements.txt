@@ -1,2 +1,4 @@
 django
 channels
+django-cors-headers
+channels_redis

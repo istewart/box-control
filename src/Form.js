@@ -13,16 +13,19 @@ export class Form extends React.Component {
         sizeOne: 90,
         sizeTwo: 0,
         contrastLevels: [255],
-        socket: openSocket('localhost:8000/socket.io/'),
+
+        socket: new WebSocket('ws://localhost:8000/sockets/socket.io/'),
         dataPoints: [],
       }
   
       constructor(props) {
         super(props);
-  
-        this.state.socket.on('receiveDataPoint', (dataPoint) => {
-          this.setState({dataPoints: [...this.state.dataPoints, dataPoint]});
-        });
+
+	console.log(this.state.socket);
+        this.state.socket.onmessage = (event) => console.log(event);
+        //this.state.socket.on('receiveDataPoint', (dataPoint) => {
+        //  this.setState({dataPoints: [...this.state.dataPoints, dataPoint]});
+         // });
       }
   
       onChange = (name, value) => {
@@ -42,9 +45,13 @@ export class Form extends React.Component {
             sizeTwo: this.state.sizeTwo,
             contrastLevels: this.state.contrastLevels,
         };
-        
-        this.state.socket.emit('startSession', session);
 
+        const message = {
+          type: 'startSession',
+          data: session,
+        };
+        
+        this.state.socket.send(JSON.stringify(message));
         this.props.onAddSession(session);
     };
   
