@@ -5,16 +5,35 @@ from asgiref.sync import async_to_sync
 
 class SocketConsumer(WebsocketConsumer):
     def connect(self):
+        self.name = 'browser'
         print('connected!!')
         self.accept()
-        self.send(text_data='hi')
+        self.send(text_data=json.dumps({'hi':'hey'}))
+
+        #jo
+        async_to_sync(self.channel_layer.group_add)(
+            self.name,
+            self.channel_name
+        )
 
     def disconnect(self, close_code):
         print('disconnected :(')
-        pass
+        async_to_sync(self.channel_layer.group_discard)(
+            self.name,
+            self.channel_name
+        )
+
+
+    def updateData(self, data):
+        #called when BoxConsumers get new data
+        event = {}
+        event['data'] = data['data']
+        event['type'] = 'updateData'
+
+        self.send(text_data=json.dumps(event))
+
 
     def receive(self, text_data):
-	    # TODO
         event = json.loads(text_data)
 
         event_type = event['type']
@@ -55,15 +74,25 @@ class BoxConsumer(WebsocketConsumer):
         )
 
     def receive(self, text_data):
-        print(f'received socket response {text_data}')
+        #print(f'received socket response {text_data}')
         event = json.loads(text_data)
 
         event_type = event['type']
         data = event['data']
 
-        if event_type == 'dataStream':
-            # TODO:
-            pass
+        if event_type == 'updateData' or event_type == 'dataStream':
+            #TODO: first add info to db
+            print('I have received data updates')
+            async_to_sync(self.channel_layer.group_send)(
+                'browser',
+                {
+                    'type': 'updateData',
+                    'data': data
+                }
+            )
+        else:
+            print('some other event gotten')
+            print(text_data)
 
     def startSession(self, data):
         self.send(text_data=json.dumps(data))

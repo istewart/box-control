@@ -5,32 +5,40 @@ import openSocket from 'socket.io-client';
 
 export class Form extends React.Component {
     state = {
-        animalId: '',
-        boxNumber: '',
-        stage: 1,
-        optogenetics: 'None',
-        backgroundLuminensce: 32,
-        sizeOne: 90,
-        sizeTwo: 0,
-        contrastLevels: [255],
+      animalId: '',
+      boxNumber: '',
+      stage: 1,
+      optogenetics: 'None',
+      backgroundLuminensce: 32,
+      sizeOne: 90,
+      sizeTwo: 0,
+      contrastLevels: [255],
 
-        socket: new WebSocket('ws://localhost:8000/sockets/socket.io/'),
-        dataPoints: [],
-      }
-  
-      constructor(props) {
-        super(props);
+      socket: new WebSocket('ws://localhost:8000/sockets/socket.io/'),
+      dataPoints: [],
+    };
 
-	console.log(this.state.socket);
-        this.state.socket.onmessage = (event) => console.log(event);
-        //this.state.socket.on('receiveDataPoint', (dataPoint) => {
-        //  this.setState({dataPoints: [...this.state.dataPoints, dataPoint]});
-         // });
+    constructor(props) {
+      super(props);
+
+      console.log(this.state.socket);
+
+      this.state.socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === 'updateData'){
+          console.log(`Received Data: ${msg.data}`);
+          this.props.onReceiveData(msg.data);
+        } else{
+          console.log(msg);
+        }
       }
-  
-      onChange = (name, value) => {
-        this.setState({[name]: value});
-      };
+    }
+
+    onChange = (name, value) => {
+      this.setState({[name]: value});
+    };
+
   
     onSubmit = (e) => {
         e.preventDefault();

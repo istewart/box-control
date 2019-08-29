@@ -3,41 +3,72 @@ import React from 'react';
 import {Form} from './Form.js';
 import {Sessions} from './Sessions.js';
 import './App.css';
-import {XYPlot, LineMarkSeries, XAxis, YAxis, HorizontalGridLines} from 'react-vis';
+import 'react-vis/dist/style.css';
+import {XYPlot, LineSeries, XAxis, YAxis, HorizontalGridLines} from 'react-vis';
 
-const data = [
-  {x: 0, y: 8},
-  {x: 1, y: 5},
-  {x: 2, y: 4},
-  {x: 3, y: 9},
-  {x: 4, y: 1},
-  {x: 5, y: 7},
-  {x: 6, y: 6},
-  {x: 7, y: 3},
-  {x: 8, y: 2},
-  {x: 9, y: 0}
-];
+const colorsByColumn = {
+  stim: "palevioletred",
+  reward: "green",
+  lick: "orange",
+};
+
+
+const labelsByNumber = {
+  .5: 'stim',
+  2.5: 'lick',
+  4.5: 'reward'
+}
+
 
 class App extends React.Component {
   state = {
     sessions: [],
+    data: []
   };
 
   onAddSession = (session) => {
+    //TODO: this does not seem like how one should add sessions?
+    //idk tho
     this.setState({sessions: [...this.state.sessions, session]});
   };
+
+  onReceiveData = (data) => {
+    //roll over if over limit
+    if (this.state.data.length==200){
+      this.state.data.shift();
+    }
+
+    this.setState({
+      data: [...this.state.data, data],
+    });
+  }
 
   render() {
     return (
       <div className="App">
         <header className="App-header">
-          <Form onAddSession={this.onAddSession} />
+          <Form 
+            onAddSession={this.onAddSession}
+            onReceiveData={this.onReceiveData}
+          />
           <div className="graphs">
-            <XYPlot height={300} width={300} >
-              <LineMarkSeries data={data} color="palevioletred" />
+            <XYPlot height={300} width={400} >
+              {['stim', 'lick', 'reward'].map(
+                (column, i) => (
+                    <LineSeries
+                      data={this.state.data.map(
+                        (datum) => ({x: datum.time, y: datum[column] + 2*i})
+                      )}
+                      color={colorsByColumn[column]}
+                      fill={""}
+                      curve="curveStep"
+                    />
+                )
+              )}
+              
               <HorizontalGridLines />
-              <XAxis title="X" />
-              <YAxis title="Y" />
+              <XAxis title="Time" />
+              <YAxis title="" tickValues={[0.5,2.5,4.5]} tickFormat={v=>labelsByNumber[v]}/>
             </XYPlot>
           </div>
           <Sessions sessions={this.state.sessions} />
