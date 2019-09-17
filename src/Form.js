@@ -7,14 +7,15 @@ export class Form extends React.Component {
     state = {
       animalId: '',
       boxNumber: '',
-      stage: 1,
+      tier: 1,
       optogenetics: 'None',
+      mW: 0,
       backgroundLuminensce: 32,
       sizeOne: 90,
       sizeTwo: 0,
       contrastLevels: [255],
 
-      socket: new WebSocket('ws://localhost:8000/sockets/socket.io/'),
+      socket: new WebSocket('ws://0.0.0.0:8000/sockets/socket.io/'),
       dataPoints: [],
     };
 
@@ -46,9 +47,10 @@ export class Form extends React.Component {
         const session = {
             animalId: this.state.animalId,
             boxNumber: this.state.boxNumber,
-            stage: this.state.stage,
+            tier: this.state.tier,
             optogenetics: this.state.optogenetics,
             backgroundLuminensce: this.state.backgroundLuminensce,
+            mW: this.state.mW,
             sizeOne: this.state.sizeOne,
             sizeTwo: this.state.sizeTwo,
             contrastLevels: this.state.contrastLevels,
@@ -67,8 +69,9 @@ export class Form extends React.Component {
         const {
           animalId,
           boxNumber,
-          stage,
+          tier,
           optogenetics,
+          mW,
           backgroundLuminensce,
           sizeOne,
           sizeTwo,
@@ -93,15 +96,16 @@ export class Form extends React.Component {
                   value={boxNumber}
                   onChange={(e) => this.onChange('boxNumber', e.target.value)}
                 />
+                
                 <select
-                  name="stage"
+                  name="tier"
                   className="form-select"
-                  value={stage}
-                  onChange={(e) => this.onChange('stage', e.target.value)}
+                  value={tier}
+                  onChange={(e) => this.onChange('tier', e.target.value)}
                 >
-                  <option>None</option>
-                  <option>Activation</option>
-                  <option>Supression</option>
+                  <option>1</option>
+                  <option>2</option>
+                  <option>3</option>
                 </select>
                 <select
                   name="optogenetics"
@@ -109,10 +113,18 @@ export class Form extends React.Component {
                   value={optogenetics}
                   onChange={(e) => this.onChange('optogenetics', e.target.value)}
                 >
-                  <option>1</option>
-                  <option>2</option>
-                  <option>3</option>
+                  <option>None</option>
+                  <option>Activation</option>
+                  <option>Supression</option>
                 </select>
+                <input
+                  type="number"
+                  name="mW"
+                  className="form-input"
+                  placeholder="mW"
+                  value={mW}
+                  onChange={(e) => this.onChange('mW', e.target.value)}
+                />
                 <input
                   type="number"
                   name="backgroundLuminensce"

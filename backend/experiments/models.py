@@ -8,8 +8,8 @@ class Animal(models.Model):
   """
   A mouse that performs sessions.
   """
-  id = models.CharField(primary_key=True)
-  genotype = models.CharField() 
+  id = models.CharField(primary_key=True, max_length=64)
+  genotype = models.CharField(max_length=64) 
 
 
 class Session(models.Model):
@@ -18,19 +18,26 @@ class Session(models.Model):
   """
   id = models.AutoField(primary_key=True)
 
-  date = models.DateField()
+  date = models.DateField(auto_now_add=True)
 
-  animal = models.ForeignKey(Animal)
-  box_number = models.IntegerField()
-  stage = models.ChoiceField(choices=(1, 2, 3))
+  animal = models.ForeignKey(Animal, on_delete=models.CASCADE)
+  
+  # TODO: should we enforce choices here or only on the ui side
+  box_number = models.CharField(max_length=10)
 
-  optogenetics = models.ChoiceField(
-    choices=('NONE', 'ACTIVATION', 'SUPRESSION')
-  )
-  background_luminensce = models.IntegerField()
+  tier = models.IntegerField()#choices=(1, 2, 3))
+
+  optogenetics = models.CharField(max_length=30)
+  #  choices=('NONE', 'ACTIVATION', 'SUPRESSION')
+  #)
+  #mW = models.FloatField(null=True)
+  background_lum = models.IntegerField()
+
+  # TODO: make this a sizes list
   size_one = models.IntegerField()
   size_two = models.IntegerField(null=True)
-  contrast_levels = models.ArrayField()
+  # TODO: figure out list fields
+  # contrast_levels = models.ArrayField()
 
 
 class Trial(models.Model):
@@ -39,26 +46,31 @@ class Trial(models.Model):
   may or may not respond.
   """
   id = models.AutoField(primary_key=True)
-  session = models.ForeignKey(Session)
+  session = models.ForeignKey(Session, on_delete=models.CASCADE)
+  trialNumber = models.IntegerField()
 
   # Stim parameters.
-  intensity = models.IntegerField()
+  contrast = models.IntegerField()
   stim_size = models.IntegerField()
 
   is_optogenetics = models.BooleanField()
 
+  # Animal responses
+  is_licked = models.BooleanField()
+  response_time = models.IntegerField()
+
 
 class DataPoint(models.Model):
   id = models.AutoField(primary_key=True)
-  trial = models.ForeignKey(Trial)
+  trial = models.ForeignKey(Trial, on_delete=models.CASCADE)
 
-  timestamp = models.DateTimeField()
+  timestamp = models.IntegerField()
 
   # Trial events.
   is_stim = models.BooleanField()
   is_port_open = models.BooleanField()
-  is_rewarded = models.BooleanField()
   is_tone = models.BooleanField()
+  is_led_on = models.BooleanField()
 
   # Animal behaviors.
   is_licking = models.BooleanField()

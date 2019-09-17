@@ -39,6 +39,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     'channels',
     'sockets',
+    'experiments',
     'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',

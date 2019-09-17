@@ -7,9 +7,9 @@ import 'react-vis/dist/style.css';
 import {XYPlot, LineSeries, XAxis, YAxis, HorizontalGridLines} from 'react-vis';
 
 const colorsByColumn = {
-  stim: "palevioletred",
-  reward: "green",
-  lick: "orange",
+  is_stim: "palevioletred",
+  is_port_open: "green",
+  is_licking: "orange",
 };
 
 
@@ -33,7 +33,7 @@ class App extends React.Component {
   };
 
   onReceiveData = (data) => {
-    //roll over if over limit
+    //roll over if over
     if (this.state.data.length==200){
       this.state.data.shift();
     }
@@ -53,11 +53,11 @@ class App extends React.Component {
           />
           <div className="graphs">
             <XYPlot height={300} width={400} >
-              {['stim', 'lick', 'reward'].map(
+              {['is_stim', 'is_licking', 'is_port_open'].map(
                 (column, i) => (
                     <LineSeries
                       data={this.state.data.map(
-                        (datum) => ({x: datum.time, y: datum[column] + 2*i})
+                        (datum) => ({x: datum.timestamp, y: datum[column] + 2*i})
                       )}
                       color={colorsByColumn[column]}
                       fill={""}
