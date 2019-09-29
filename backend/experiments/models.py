@@ -57,7 +57,7 @@ class Trial(models.Model):
 
   # Animal responses
   is_licked = models.BooleanField()
-  response_time = models.IntegerField()
+  response_time = models.IntegerField(null=True)
 
 
 class DataPoint(models.Model):
