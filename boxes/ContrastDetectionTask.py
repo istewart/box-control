@@ -43,7 +43,23 @@ class Box:
             except:
                 print('connection lost')
 
-                    
+
+    async def handle_isi(self):
+        consumer_task = asyncio.ensure_future(
+            self.handle_incoming())
+        producer_task = asyncio.ensure_future(
+            producer_handler(websocket, path))
+        done, pending = await asyncio.wait(
+            [consumer_task, producer_task],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in pending:
+            task.cancel()
+
+    async def handle_incoming(self):
+        #just await getting message and then event handle
+        await event = self.websocket.recv() 
+        self.handle_event(event)               
 
     def handle_event(self, event):
         response_event = json.loads(event)
@@ -198,14 +214,21 @@ class ContrastDetectionTask:
             self.idx+=1
         print(time.time()-s)
 
+    def toggle_pause(self):
+        self.is_paused = not self.is_paused
+
     async def run_trial(self):
+
+        if self.is_paused:
+            return
+
         #TODO: figure out what's up with which next to call and where data is
         #self.exp.nextEntry()
         trial = self.trials.next()
         trial_still_running = True
         self.trial_timer.reset()
         responded = []
-        response_time = np.nan
+        response_time = None
         last_send = time.time()
 
         #send init trial info 
@@ -220,7 +243,7 @@ class ContrastDetectionTask:
             }}))
         
         while trial_still_running:
-            if time.time()-last_send > .01:
+            if time.time()-last_send > .02:
                 await self.websocket.send(json.dumps({'type': 'updateData',
                     'data': {
                         'trial_number': self.trials.thisN,
@@ -274,10 +297,13 @@ class ContrastDetectionTask:
 
             self.win.flip()
 
+        #TODO: actually run this at end of ISI???
         await self.websocket.send(json.dumps({
             'type': 'endTrial',
             'data': {
-                'is_licked': True,
+                'session_id': self.session_id,
+                'trial_number': self.trials.thisN,
+                'is_licked': responded,
                 'response_time': response_time
             }}))
 

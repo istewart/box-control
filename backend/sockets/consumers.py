@@ -1,6 +1,7 @@
 from channels.generic.websocket import WebsocketConsumer
 import json
 from asgiref.sync import async_to_sync
+from experiments.analytics import get_overall_session_performance
 from experiments.models import Animal, Session, Trial, DataPoint
 
 
@@ -24,7 +25,6 @@ class SocketConsumer(WebsocketConsumer):
             self.channel_name
         )
 
-
     def updateData(self, data):
         #called when BoxConsumers get new data
         event = {}
@@ -41,6 +41,8 @@ class SocketConsumer(WebsocketConsumer):
         event['type'] = 'initTrial'
         self.send(text_data = json.dumps(event))
 
+    def performanceUpdate(self, data):
+        self.send(text_data=json.dumps(data))
 
     def initiate_session(self, data):        
         animal_id = data['animalId']
@@ -72,6 +74,15 @@ class SocketConsumer(WebsocketConsumer):
             }
         )
 
+    def pause_session(self, data):
+        async_to_sync(self.channel_layer.group_send)(
+            data['boxNumber'],
+            {
+                'type': 'pauseSession',
+                'data': data
+            }
+        )
+
 
 
     def receive(self, text_data):
@@ -79,13 +90,15 @@ class SocketConsumer(WebsocketConsumer):
 
         event_type = event['type']
         data = event['data']
-        print('received this session from form')
+        print('received this info from form')
         print(data)
 
         if event_type == 'startSession':
             self.initiate_session(data)
+        if event_type == 'pauseSession':
+            self.pause_session(data)
 
-        self.send(text_data=json.dumps(event))
+        #self.send(text_data=json.dumps(event))
 
 
 class BoxConsumer(WebsocketConsumer):
@@ -136,9 +149,32 @@ class BoxConsumer(WebsocketConsumer):
                 }
             )
 
+        elif event_type == 'endTrial':
+            trial = Trial.objects.get(
+                session_id=data['session_id'],
+                trial_number=data['trial_number'],
+            )
+
+            trial.is_licked = data['is_licked']
+            trial.response_time = data['response_time']
+
+            trial.save()
+
+            session_performance = get_overall_session_performance(trial.session_id)
+
+            async_to_sync(self.channel_layer.group_send)(
+                'browser',
+                {
+                    'type': 'performanceUpdate',
+                    'data': session_performance,
+                }
+            )
         else:
             print('some other event gotten')
             print(text_data)
 
     def startSession(self, data):
+        self.send(text_data=json.dumps(data))
+
+    def pauseSession(self, data):
         self.send(text_data=json.dumps(data))

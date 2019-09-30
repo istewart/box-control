@@ -22,9 +22,12 @@ const labelsByNumber = {
 
 class App extends React.Component {
   state = {
-    trial_number: 'Unknown',
+    trial_number: 'NA',
     stim_size: 'Unknown',
     contrast: 'Unknown',
+    trial_count: 'Unknown',
+    hits: 'Unknown',
+    false_alarms: 'Unknown',
     sessions: [],
     data: [],
   };
@@ -55,6 +58,14 @@ class App extends React.Component {
     })
   }
 
+  onReceivePerformanceUpdate = ({total_count, hits, false_alarms}) => {
+    this.setState({
+      total_count,
+      hits,
+      false_alarms,
+    })
+  }
+
   render() {
     return (
       <div className="App">
@@ -63,11 +74,20 @@ class App extends React.Component {
             onAddSession={this.onAddSession}
             onReceiveData={this.onReceiveData}
             onReceiveNewTrial={this.onReceiveNewTrial}
+            onReceivePerformanceUpdate={this.onReceivePerformanceUpdate}
           />
           <div className="center-panel">
-            <h3>Trial Number {this.state.trial_number}</h3>
-            <h3>Size {this.state.stim_size}</h3>
-            <h3>Contrast {this.state.contrast}</h3>
+            <div className = 'row'>
+              <div classname = 'column'>
+                <h4>Trial Number: {this.state.trial_number}</h4>
+                <h4>Size: {this.state.stim_size}</h4>
+                <h4>Contrast: {this.state.contrast}</h4>
+              </div>
+              <div classname = 'column'>
+                <h4>Hit %: {this.state.hits}</h4>
+                <h4>FA %: {this.state.false_alarms}</h4>
+              </div>
+            </div>
             <div className="graphs">
               <XYPlot height={300} width={400} >
                 {['is_stim', 'is_licking', 'is_port_open'].map(
