@@ -22,15 +22,16 @@ export class Form extends React.Component {
     constructor(props) {
       super(props);
 
-      console.log(this.state.socket);
-
       this.state.socket.onmessage = (event) => {
         const msg = JSON.parse(event.data);
 
         if (msg.type === 'updateData'){
           console.log(`Received Data: ${msg.data}`);
           this.props.onReceiveData(msg.data);
-        } else{
+        } else if (msg.type === 'initTrial'){
+          console.log(`New Trial: ${msg.data}`);
+          this.props.onReceiveNewTrial(msg.data);
+        }else{
           console.log(msg);
         }
       }

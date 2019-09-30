@@ -15,20 +15,54 @@ class Box:
     def __init__(self):
         self.session = None
         asyncio.get_event_loop().run_until_complete(self.run_ws())
-        asyncio.get_event_loop().run_forever()
 
     async def run_ws(self):
         #create the websocket connection
         while True:
-            async with websockets.connect(my_url) as websocket:
-                while True:
-                    response = await websocket.recv()
-                    response_event = json.loads(response)
+            try:
+                async with websockets.connect(my_url) as websocket:
+                    print('new websocket connection!')
+                    self.websocket = websocket
 
-                    response_type = response_event['type']
-                    response_data = response_event['data']
-                    self.session = ContrastDetectionTask(websocket, response_data)
+                    while True:
+                        #TODO: make this actually run isi and recv at same time, 
+                        # waiting for whichever returns first
+                        #and then run trial separately
+                        try:
+                            response = await asyncio.wait_for(
+                                websocket.recv(),
+                                timeout=.01
+                            )
 
+                            self.handle_event(response)
+                        except asyncio.TimeoutError:
+                            pass
+
+                        if self.session and not self.session.is_ended:
+                            await self.session.run_trial()
+            except:
+                print('connection lost')
+
+                    
+
+    def handle_event(self, event):
+        response_event = json.loads(event)
+
+        response_type = response_event['type']
+        response_data = response_event['data']
+
+        if response_type == 'startSession':
+            print('creating a session')
+            self.session = ContrastDetectionTask(
+                self.websocket,
+                response_data,
+            )
+        elif response_type == 'stopSession':
+            self.session.stop()
+        elif response_type == 'pauseSession':
+            self.session.toggle_pause()
+        else:
+            print(f'Unknown response_type: {response_type}')
 
 
 class ContrastDetectionTask:
@@ -36,6 +70,7 @@ class ContrastDetectionTask:
         self.websocket = websocket
         self.is_ended = False
         self.is_paused = False
+        self.session_id = sessionData['session_id']
 
         self.setup_exp()
         
@@ -74,7 +109,12 @@ class ContrastDetectionTask:
         self.setup_daq()
         
         self.idx = 0
-        asyncio.get_event_loop().run_until_complete(self.run_blocks())
+
+        #create a trial handler
+        self.trials = data.TrialHandler(self.size_int_response, 1, method='sequential')
+        self.trials.data.addDataType('Response')
+        self.exp.addLoop(self.trials)
+        #asyncio.get_event_loop().run_until_complete(self.run_blocks())
 
     def setup_daq(self):
         #TODO
@@ -90,21 +130,17 @@ class ContrastDetectionTask:
         self.monitor = monitors.Monitor('Default', width=monitor_width, distance=monitor_dist)
         self.win = visual.Window(fullscr=False, monitor=self.monitor, units="pix", size=[1280, 720])
         
-        print('generated window')
         FR = self.win.getActualFrameRate()
         self.expInfo['FR'] = FR 
         self.expInfo['monitor_height'] = monitor_height
         self.expInfo['monitor_dist'] = monitor_dist
         self.pix_per_deg = self.win.size[1]/(np.degrees(np.arctan(monitor_height/monitor_dist)))       
         
-        print('set up some vars')
-
     def setup_exp(self):
         base_dir = 'C:/Users/miscFrankenRig/Documents/ContrastDetectionTask/'
         self.expInfo = {'mouse':'Mfake','date': datetime.datetime.today().strftime('%Y%m%d-%H_%M_%S')}
 
         self.filename = base_dir + self.expInfo['date']+'_' + self.expInfo['mouse']
-        
 
         self.exp = data.ExperimentHandler('ContrastDetectionTask','v0',
             dataFileName = self.filename,
@@ -121,8 +157,6 @@ class ContrastDetectionTask:
         intensities[10] = [2,16,32,64, 100]
         #create trial conditions
         self.size_int_response = []
-        #mult = math.ceil(500/(sum([len(intensities(s)) for s in sizes])*4))
-        #print('I think mult should be ', mult)
         for temp in range(50):
             mini_size_int_response = []
             for _ in range(4):
@@ -141,31 +175,6 @@ class ContrastDetectionTask:
         self.trials.saveAsWideText(self.filename + '_trials')
         self.teardown_daq()
 
-        
-    async def run_blocks(self):
-        user_quit = False 
-        while not user_quit:
-            print('makin trials')
-            #do in blocks of randomized trials
-
-            self.trials = data.TrialHandler(self.size_int_response, 1, method='sequential')
-            self.trials.data.addDataType('Response')
-            self.exp.addLoop(self.trials)
-
-            for trial in self.trials:
-                if user_quit:
-                    break
-
-                await self.run_trial(trial)
-
-                #TODO: re-figure out quit implementation
-
-                if not user_quit:
-                    await self.run_isi()
-                    self.exp.nextEntry()        
-
-
-
     async def present_grating(self):
         phase = 0
         s = time.time()
@@ -177,7 +186,7 @@ class ContrastDetectionTask:
 
             await self.websocket.send(json.dumps({'type': 'updateData',
                 'data': {
-                    'trial': 1,
+                    'trial_number': 1,
                     'timestamp': time.time(),
                     'is_stim':1,
                     'is_licking':np.random.randint(2),
@@ -189,20 +198,32 @@ class ContrastDetectionTask:
             self.idx+=1
         print(time.time()-s)
 
-    async def run_trial(self, trial):
+    async def run_trial(self):
+        #TODO: figure out what's up with which next to call and where data is
+        #self.exp.nextEntry()
+        trial = self.trials.next()
         trial_still_running = True
         self.trial_timer.reset()
         responded = []
         response_time = np.nan
-        user_quit = False
         last_send = time.time()
 
+        #send init trial info 
+        await self.websocket.send(json.dumps({
+            'type': 'initTrial',
+            'data': {
+                'session_id': self.session_id,
+                'trial_number': self.trials.thisN,
+                'contrast': trial['intensity'],
+                'stim_size': trial['size'],
+                'is_optogenetics': False,
+            }}))
         
         while trial_still_running:
             if time.time()-last_send > .01:
                 await self.websocket.send(json.dumps({'type': 'updateData',
                     'data': {
-                        'trial': 1,
+                        'trial_number': self.trials.thisN,
                         'timestamp': time.time(),
                         'is_stim':0,
                         'is_licking':np.random.randint(2),
@@ -214,11 +235,6 @@ class ContrastDetectionTask:
                 last_send = time.time()
             self.idx+=1
 
-            e=event.getKeys()
-            if len(e)>0:
-                if e[0]=='q':
-
-                    return True
             current_time = self.trial_timer.getTime()
             
             if current_time <= self.stim_delay:
@@ -227,7 +243,6 @@ class ContrastDetectionTask:
             elif (current_time >= self.stim_delay and 
                   current_time <=
                     self.stim_time+self.stim_delay-.2):
-
                 print(trial['intensity'], trial['size'])
                 self.grating.setContrast(trial['intensity']/100)
                 self.grating.setSize(trial['size']*self.pix_per_deg)
@@ -241,6 +256,7 @@ class ContrastDetectionTask:
                 responded = self.check_lick()
 
             if responded:
+                responded = True,
                 if trial['corr_response']:
                     self.deliver_reward()
                 
@@ -253,11 +269,17 @@ class ContrastDetectionTask:
             elif current_time >= 1.7:
 
                 trial_still_running = False
+                responded = False
                 self.trials.data.add('Response', 0)
 
             self.win.flip()
-        
-        return user_quit
+
+        await self.websocket.send(json.dumps({
+            'type': 'endTrial',
+            'data': {
+                'is_licked': True,
+                'response_time': response_time
+            }}))
 
     def deliver_reward(self):
         pass

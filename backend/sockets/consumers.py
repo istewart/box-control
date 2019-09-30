@@ -1,7 +1,7 @@
 from channels.generic.websocket import WebsocketConsumer
 import json
 from asgiref.sync import async_to_sync
-from experiments.models import Animal, Session
+from experiments.models import Animal, Session, Trial, DataPoint
 
 
 class SocketConsumer(WebsocketConsumer):
@@ -29,10 +29,17 @@ class SocketConsumer(WebsocketConsumer):
         #called when BoxConsumers get new data
         event = {}
         event['data'] = data['data']
-        print(data['data'])
         event['type'] = 'updateData'
 
         self.send(text_data=json.dumps(event))
+
+    def initTrial(self, data):
+        #called when BoxConsumers start a new trial
+        print(data)
+        event = {}
+        event['data'] = data['data']
+        event['type'] = 'initTrial'
+        self.send(text_data = json.dumps(event))
 
 
     def initiate_session(self, data):        
@@ -45,7 +52,7 @@ class SocketConsumer(WebsocketConsumer):
         this_animal = Animal.objects.filter(id__iexact=animal_id)[0]
 
         # create the session object
-        Session.objects.create(
+        session = Session.objects.create(
             animal = this_animal,
             box_number = data['boxNumber'],
             tier = data['tier'],
@@ -53,6 +60,8 @@ class SocketConsumer(WebsocketConsumer):
             background_lum = data['backgroundLuminensce'],
             size_one = data['sizeOne']
             )
+
+        data['session_id'] = session.id
 
         # TODO: check if anyone is in this channel group, send error
         async_to_sync(self.channel_layer.group_send)(
@@ -106,7 +115,6 @@ class BoxConsumer(WebsocketConsumer):
 
         if event_type == 'updateData' or event_type == 'dataStream':
             #TODO: first add info to db
-            print('I have received data updates')
             async_to_sync(self.channel_layer.group_send)(
                 'browser',
                 {
@@ -114,10 +122,19 @@ class BoxConsumer(WebsocketConsumer):
                     'data': data
                 }
             )
+
         elif event_type == 'initTrial':
-            # TODO: first add db info 
+            Trial.objects.create(**data)
+
             print('I am beginning a new trial')
-            # TODO : send this info along, create responses to it
+
+            async_to_sync(self.channel_layer.group_send)(
+                'browser',
+                {
+                    'type':'initTrial',
+                    'data': data,
+                }
+            )
 
         else:
             print('some other event gotten')

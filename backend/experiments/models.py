@@ -47,7 +47,7 @@ class Trial(models.Model):
   """
   id = models.AutoField(primary_key=True)
   session = models.ForeignKey(Session, on_delete=models.CASCADE)
-  trialNumber = models.IntegerField()
+  trial_number = models.IntegerField()
 
   # Stim parameters.
   contrast = models.IntegerField()
@@ -56,7 +56,7 @@ class Trial(models.Model):
   is_optogenetics = models.BooleanField()
 
   # Animal responses
-  is_licked = models.BooleanField()
+  is_licked = models.BooleanField(null=True)
   response_time = models.IntegerField(null=True)
 
 
