@@ -2,7 +2,46 @@
 from __future__ import unicode_literals
 
 from django.db import models
+"""
+session_info  = {
+  'animal': {
+    'id': 'animal',
+    'genotype': 'bl6/icr',
+  }
+  'exp_params': {
+    'stim_delay': 0,
+    'stim_time': .5,
+    'response_window': 1,
+    'isi_min' = 3,
+    'isi_max' = 8,
+    'grace_time' = 1,
+    'valve_open_time' = .02
+  }
+  'opto_params': {
+    'do_opto': False,
+    'mW': 0,
+    'nominal mW': 0,
+    'dist_above': 0,
+    'non_opto_weight': 2,
+  }
+  'training_params': {
+    'tier': 1,
+    'stim_sets': #all stim sets with that foreign key
+  }
+}
 
+'stim_set': {
+  'overall_weight': 1,
+  'sf': .08,
+  'tf': 2,
+  'ori': 180+45,
+  'position_x': 0,
+  'position_y': 0,
+  'size': 0,
+  'weights': [0,0,0,0],
+  'contrasts': [0,0,0,0],
+}
+"""
 
 class Animal(models.Model):
   """
@@ -10,6 +49,8 @@ class Animal(models.Model):
   """
   id = models.CharField(primary_key=True, max_length=64)
   genotype = models.CharField(max_length=64) 
+  #date_of_birth = models.DateField(auto_now_add=False)
+  #sex = models.CharField(max_length=1)
 
 
 class Session(models.Model):

@@ -1,4 +1,4 @@
-from psychopy import visual, core,monitors,data, event,gui# import some libraries from PsychoPy
+from psychopy import visual,clock, core,monitors,data, event,gui# import some libraries from PsychoPy
 import numpy as np
 import datetime
 import random
@@ -19,46 +19,38 @@ class Box:
     async def run_ws(self):
         #create the websocket connection
         while True:
-            try:
-                async with websockets.connect(my_url) as websocket:
-                    print('new websocket connection!')
-                    self.websocket = websocket
+            async with websockets.connect(my_url) as websocket:
+                print('new websocket connection!')
+                self.websocket = websocket
 
-                    while True:
-                        #TODO: make this actually run isi and recv at same time, 
-                        # waiting for whichever returns first
-                        #and then run trial separately
-                        try:
-                            response = await asyncio.wait_for(
-                                websocket.recv(),
-                                timeout=.01
-                            )
+                while True:
+                    await self.handle_isi()
 
-                            self.handle_event(response)
-                        except asyncio.TimeoutError:
-                            pass
-
-                        if self.session and not self.session.is_ended:
-                            await self.session.run_trial()
-            except:
-                print('connection lost')
+                    if self.session and not self.session.is_ended:
+                        await self.session.run_trial()
+            
 
 
     async def handle_isi(self):
-        consumer_task = asyncio.ensure_future(
-            self.handle_incoming())
-        producer_task = asyncio.ensure_future(
-            producer_handler(websocket, path))
-        done, pending = await asyncio.wait(
-            [consumer_task, producer_task],
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for task in pending:
-            task.cancel()
+        print('handling isi')
+        if self.session and not self.session.is_ended:
+            print('in a session so chilling')
+            consumer_task = asyncio.ensure_future(
+                self.handle_incoming())
+            producer_task = asyncio.ensure_future(
+                self.session.run_isi())
+            done, pending = await asyncio.wait(
+                [consumer_task, producer_task],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for task in pending:
+                task.cancel()
+        else:
+            await self.handle_incoming()
 
     async def handle_incoming(self):
         #just await getting message and then event handle
-        await event = self.websocket.recv() 
+        event = await self.websocket.recv() 
         self.handle_event(event)               
 
     def handle_event(self, event):
@@ -89,11 +81,33 @@ class ContrastDetectionTask:
         self.session_id = sessionData['session_id']
 
         self.setup_exp()
+
+        self.define_task_vars()
         
-        #task variables
-        #TODO: ALL these need to be stored?
-        position = np.array([-15,15])
-        sf = .08
+        self.setup_monitor()
+        self.gen_conds()
+        self.setup_stim()
+        self.setup_daq()
+
+        self.session_timer = clock.MonotonicClock()
+        self.trial_timer = core.Clock()
+        self.isi_timer = core.Clock()
+        
+        #create a trial handler
+        self.trials = data.TrialHandler(
+            self.size_int_response, 1, method='sequential')
+        self.trials.data.addDataType('Response')
+        self.exp.addLoop(self.trials)
+
+
+
+    def setup_daq(self):
+        #TODO
+        pass
+
+
+    def define_task_vars(self):
+        #TODO: session all this
         self.stim_delay = .2 #in s
         self.stim_time = .6 #in s
         self.response_window = 1 # in s
@@ -101,17 +115,46 @@ class ContrastDetectionTask:
         self.isimax = 8 #in s
         self.grace_time = 1 #in s
         self.water_time = 20 #in ms
+    
+
+
+    def setup_monitor(self):
+        self.expInfo['monitor_height'] = 13 #in cm
+        self.expInfo['monitor_width'] = 22.5 #cm
+        self.expInfo['monitor_dist'] = 10 #in cm
+        
+        #initialize
+        self.monitor = monitors.Monitor(
+            'Default',
+            width=self.expInfo['monitor_width'],
+            distance=self.expInfo['monitor_dist']
+            )
+        self.win = visual.Window(
+            fullscr=False,
+            monitor=self.monitor,
+            units="pix",
+            size=[1280, 720]
+            )
+        
+        FR = self.win.getActualFrameRate()
+        self.expInfo['FR'] = FR 
+        self.pix_per_deg = (self.win.size[1]/
+            (np.degrees(
+                np.arctan(
+                    self.expInfo['monitor_height']/self.expInfo['monitor_dist']
+                    ))))  
+
+
+
+    def setup_stim(self):
+        #TODO: this all needs to be stored somehow
+        position = np.array([-15,15])
+        sf = .08
         self.tf=2
-        
-        self.setup_monitor()
-        self.gen_conds()
-        
-        #and some more general variables
+        #I guess just define the grating and such?
         self.phase_increment = self.tf/self.expInfo['FR']
         self.stim_on_frames = int(self.stim_time*self.expInfo['FR'])
-        print('conditions genned')
-        self.trial_timer = core.Clock()
-        self.isi_timer = core.Clock()
+        
         self.grating = visual.GratingStim(
             win=self.win,
             size=10*self.pix_per_deg,
@@ -120,38 +163,10 @@ class ContrastDetectionTask:
             units='pix',
             ori=180+45,
             mask='circle',
-        )
+        )     
         
-        self.setup_daq()
-        
-        self.idx = 0
 
-        #create a trial handler
-        self.trials = data.TrialHandler(self.size_int_response, 1, method='sequential')
-        self.trials.data.addDataType('Response')
-        self.exp.addLoop(self.trials)
-        #asyncio.get_event_loop().run_until_complete(self.run_blocks())
 
-    def setup_daq(self):
-        #TODO
-        pass
-    
-    def setup_monitor(self):
-        #monitor variables
-        monitor_width = 22.5 #in cm
-        monitor_height = 13 #in cm
-        monitor_dist = 10 #in cm
-        
-        #initialize
-        self.monitor = monitors.Monitor('Default', width=monitor_width, distance=monitor_dist)
-        self.win = visual.Window(fullscr=False, monitor=self.monitor, units="pix", size=[1280, 720])
-        
-        FR = self.win.getActualFrameRate()
-        self.expInfo['FR'] = FR 
-        self.expInfo['monitor_height'] = monitor_height
-        self.expInfo['monitor_dist'] = monitor_dist
-        self.pix_per_deg = self.win.size[1]/(np.degrees(np.arctan(monitor_height/monitor_dist)))       
-        
     def setup_exp(self):
         base_dir = 'C:/Users/miscFrankenRig/Documents/ContrastDetectionTask/'
         self.expInfo = {'mouse':'Mfake','date': datetime.datetime.today().strftime('%Y%m%d-%H_%M_%S')}
@@ -161,6 +176,8 @@ class ContrastDetectionTask:
         self.exp = data.ExperimentHandler('ContrastDetectionTask','v0',
             dataFileName = self.filename,
             extraInfo = self.expInfo)
+
+
 
     def gen_conds(self):
         #TODO: make session data determine this
@@ -183,13 +200,18 @@ class ContrastDetectionTask:
             self.size_int_response += mini_size_int_response
 
 
+
     def teardown_daq(self):
         pass
+
+
 
     def close(self):
         self.exp.saveAsWideText(self.filename)
         self.trials.saveAsWideText(self.filename + '_trials')
         self.teardown_daq()
+
+
 
     async def present_grating(self):
         phase = 0
@@ -202,20 +224,24 @@ class ContrastDetectionTask:
 
             await self.websocket.send(json.dumps({'type': 'updateData',
                 'data': {
-                    'trial_number': 1,
-                    'timestamp': time.time(),
+                    'session_id': self.session_id,
+                    'trial_number': self.trials.thisN,
+                    'timestamp': self.session_timer.getTime(),
                     'is_stim':1,
                     'is_licking':np.random.randint(2),
                     'is_false_alarm': 0,
                     'is_port_open':np.random.randint(2),
                     'is_led_on': 0,
-
+                    'is_tone': 0,
                     }}))
-            self.idx+=1
         print(time.time()-s)
+
+
 
     def toggle_pause(self):
         self.is_paused = not self.is_paused
+
+
 
     async def run_trial(self):
 
@@ -246,17 +272,17 @@ class ContrastDetectionTask:
             if time.time()-last_send > .02:
                 await self.websocket.send(json.dumps({'type': 'updateData',
                     'data': {
+                        'session_id': self.session_id,
                         'trial_number': self.trials.thisN,
-                        'timestamp': time.time(),
+                        'timestamp': self.session_timer.getTime(),
                         'is_stim':0,
                         'is_licking':np.random.randint(2),
                         'is_false_alarm': 0,
                         'is_port_open':np.random.randint(2),
                         'is_led_on': 0,
-
+                        'is_tone': 0,
                         }}))
                 last_send = time.time()
-            self.idx+=1
 
             current_time = self.trial_timer.getTime()
             
@@ -307,41 +333,52 @@ class ContrastDetectionTask:
                 'response_time': response_time
             }}))
 
+
+
     def deliver_reward(self):
+        #TODO
         pass
 
+
+
     def check_lick(self):
+        #TODO
         return False
 
-    async def run_isi(self):
 
-        user_quit = False
-        isi = np.random.randint(self.isimin,self.isimax)
 
-        self.isi_timer.reset()
-        last_send = time.time()
-        false_alarm_times = []
-        while self.isi_timer.getTime() < isi:
-            if time.time()-last_send > .01:
+    async def send_socket(self, last_send):
+        if time.time()-last_send > .01:
                 await self.websocket.send(json.dumps({'type': 'updateData',
                     'data': {
-                        'trial': 1,
-                        'timestamp': time.time(),
+                        'trial_number': self.trials.thisN,
+                        'session_id': self.session_id,
+                        'timestamp': self.session_timer.getTime(),
                         'is_stim':0,
                         'is_licking':np.random.randint(2),
                         'is_false_alarm': 0,
                         'is_port_open':np.random.randint(2),
                         'is_led_on': 0,
+                        'is_tone': 0,
 
                         }}))
                 last_send = time.time()
+        return last_send
 
-            #check for quit
-            e=event.getKeys()
-            if len(e)>0:
-                if e[0]=='q':
-                    user_quit=True
-                    return user_quit, false_alarm_times
+
+
+    async def run_isi(self):
+        print('isi is happening')
+        if self.is_paused:
+            return
+        isi = np.random.randint(self.isimin, self.isimax)
+        self.isi_timer.reset()
+        false_alarm_times = []
+
+        last_send = time.time()
+        
+        while self.isi_timer.getTime() < isi:
+            last_send = await self.send_socket(last_send)
 
             #handle actual isi
             if self.isi_timer.getTime() > self.grace_time: #if we're out of grace period
@@ -352,7 +389,13 @@ class ContrastDetectionTask:
                     false_alarm_times.append(round(self.trial_timer.getTime(),2))
                     isi = np.random.randint(self.isimin,self.isimax)
                     self.isi_timer.reset()
-        return user_quit, false_alarm_times
+
+        #TODO: is this right place to save data
+        self.trials.addData('fa_times', false_alarm_times)
+
+
+
+
 
 if __name__ == '__main__':
     Box()

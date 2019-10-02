@@ -12,7 +12,6 @@ class SocketConsumer(WebsocketConsumer):
         self.accept()
         self.send(text_data=json.dumps({'hi':'hey'}))
 
-        #jo
         async_to_sync(self.channel_layer.group_add)(
             self.name,
             self.channel_name
@@ -35,11 +34,7 @@ class SocketConsumer(WebsocketConsumer):
 
     def initTrial(self, data):
         #called when BoxConsumers start a new trial
-        print(data)
-        event = {}
-        event['data'] = data['data']
-        event['type'] = 'initTrial'
-        self.send(text_data = json.dumps(event))
+        self.send(text_data = json.dumps(data))
 
     def performanceUpdate(self, data):
         self.send(text_data=json.dumps(data))
@@ -101,6 +96,10 @@ class SocketConsumer(WebsocketConsumer):
         #self.send(text_data=json.dumps(event))
 
 
+
+
+
+
 class BoxConsumer(WebsocketConsumer):
     def connect(self):
         self.box_name = self.scope['url_route']['kwargs']['box_name']
@@ -127,7 +126,20 @@ class BoxConsumer(WebsocketConsumer):
         data = event['data']
 
         if event_type == 'updateData' or event_type == 'dataStream':
-            #TODO: first add info to db
+            trial_number = data['trial_number']
+            session_id = data.pop('session_id')
+            this_trial = Trial.objects.filter(session_id = session_id, trial_number = trial_number)[0]
+
+            DataPoint.objects.create(
+                trial= this_trial,
+                timestamp= data['timestamp'],
+                is_stim= data['is_stim'],
+                is_port_open= data['is_port_open'],
+                is_tone= data['is_tone'],
+                is_led_on= data['is_led_on'],
+                is_licking= data['is_licking'],
+                is_false_alarm= data['is_false_alarm'])
+
             async_to_sync(self.channel_layer.group_send)(
                 'browser',
                 {
@@ -144,7 +156,7 @@ class BoxConsumer(WebsocketConsumer):
             async_to_sync(self.channel_layer.group_send)(
                 'browser',
                 {
-                    'type':'initTrial',
+                    'type': 'initTrial',
                     'data': data,
                 }
             )
@@ -169,6 +181,7 @@ class BoxConsumer(WebsocketConsumer):
                     'data': session_performance,
                 }
             )
+
         else:
             print('some other event gotten')
             print(text_data)
