@@ -206,7 +206,8 @@ class ContrastDetectionTask:
 
 
 
-    def close(self):
+    def stop(self):
+        self.is_ended = True
         self.exp.saveAsWideText(self.filename)
         self.trials.saveAsWideText(self.filename + '_trials')
         self.teardown_daq()

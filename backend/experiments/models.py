@@ -2,21 +2,11 @@
 from __future__ import unicode_literals
 
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator 
+
 """
 session_info  = {
-  'animal': {
-    'id': 'animal',
-    'genotype': 'bl6/icr',
-  }
-  'exp_params': {
-    'stim_delay': 0,
-    'stim_time': .5,
-    'response_window': 1,
-    'isi_min' = 3,
-    'isi_max' = 8,
-    'grace_time' = 1,
-    'valve_open_time' = .02
-  }
+
   'opto_params': {
     'do_opto': False,
     'mW': 0,
@@ -30,17 +20,6 @@ session_info  = {
   }
 }
 
-'stim_set': {
-  'overall_weight': 1,
-  'sf': .08,
-  'tf': 2,
-  'ori': 180+45,
-  'position_x': 0,
-  'position_y': 0,
-  'size': 0,
-  'weights': [0,0,0,0],
-  'contrasts': [0,0,0,0],
-}
 """
 
 class Animal(models.Model):
@@ -49,8 +28,9 @@ class Animal(models.Model):
   """
   id = models.CharField(primary_key=True, max_length=64)
   genotype = models.CharField(max_length=64) 
-  #date_of_birth = models.DateField(auto_now_add=False)
-  #sex = models.CharField(max_length=1)
+  date_of_birth = models.DateField(auto_now_add=False)
+  training_start = models.DateField(auto_now_add=True)
+  sex = models.CharField(max_length=1)
 
 
 class Session(models.Model):
@@ -66,19 +46,60 @@ class Session(models.Model):
   # TODO: should we enforce choices here or only on the ui side
   box_number = models.CharField(max_length=10)
 
-  tier = models.IntegerField()#choices=(1, 2, 3))
+  # training vars
+  tier = models.IntegerField(
+    validators = [MinValueValidator(1), MaxValueValidator(4)]
+    )
+  background_lum = models.IntegerField(
+       validators = [MinValueValidator(0), MaxValueValidator(128)]
+    ) 
 
-  optogenetics = models.CharField(max_length=30)
-  #  choices=('NONE', 'ACTIVATION', 'SUPRESSION')
-  #)
+  #exp timing params, in ms
+  stim_delay = models.IntegerField(default=0) 
+  stim_time = models.IntegerField(default=500) 
+  response_window = models.IntegerField(default=1000) 
+  isi_min = models.IntegerField(default=3000)
+  isi_max = models.IntegerField(default=8000)
+  grace_time = models.IntegerField(default=1000)
+  valve_open_time = models.IntegerField(default=20)
+
+  #optogenetic_vars
+  #TODO: implement these
+  optogenetics = models.CharField(max_length=30,
+    choices=(
+      ('N','NONE'),
+      ('A','ACTIVATION'),
+      ('S', 'SUPRESSION'))
+  )
   #mW = models.FloatField(null=True)
-  background_lum = models.IntegerField()
 
-  # TODO: make this a sizes list
-  size_one = models.IntegerField()
-  size_two = models.IntegerField(null=True)
-  # TODO: figure out list fields
-  # contrast_levels = models.ArrayField()
+class StimSet(models.Model):
+  """
+  a class of stimuli with a single set of properties
+  and experimental meaning, but can have many contrasts.
+  Each contrast has its own weight.
+  Belongs to a session
+  """
+  id = models.AutoField(primary_key=True)
+  session = models.ForeignKey(Session, on_delete=models.CASCADE)
+
+  #weight relative to other stim sets
+  overall_weight = models.PositiveIntegerField(default=1)
+
+  #stim params
+  spatial_freq = models.FloatField(default=.08) #cpd
+  temporal_freq = models.FloatField(default=2) #Hz
+  position_x = models.FloatField(default=0) #deg
+  position_y = models.FloatField(default=0) #deg
+  size = models.IntegerField()
+
+  #contrast and contrast weights
+  #TODO! Can't Decide
+
+  should_lick = models.BooleanField()
+
+
+
 
 
 class Trial(models.Model):

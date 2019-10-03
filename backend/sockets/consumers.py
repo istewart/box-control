@@ -2,7 +2,8 @@ from channels.generic.websocket import WebsocketConsumer
 import json
 from asgiref.sync import async_to_sync
 from experiments.analytics import get_overall_session_performance
-from experiments.models import Animal, Session, Trial, DataPoint
+from experiments.models import Animal, Session, Trial, DataPoint, StimSet
+from django.forms.models import model_to_dict
 
 
 class SocketConsumer(WebsocketConsumer):
@@ -55,10 +56,23 @@ class SocketConsumer(WebsocketConsumer):
             tier = data['tier'],
             optogenetics = data['optogenetics'],
             background_lum = data['backgroundLuminensce'],
-            size_one = data['sizeOne']
             )
+        #create the stim sets
+        stim_sets = [
+                StimSet.objects.create(
+                    session=session,
+                    size=data['sizeOne'],
+                    should_lick=True,
+                ),
+                StimSet.objects.create(
+                    session=session,
+                    size=0,
+                    should_lick=False,
+                ),
+            ]
 
         data['session_id'] = session.id
+        data['stim_sets'] = [model_to_dict(stim_set) for stim_set in stim_sets]
 
         # TODO: check if anyone is in this channel group, send error
         async_to_sync(self.channel_layer.group_send)(
@@ -126,27 +140,7 @@ class BoxConsumer(WebsocketConsumer):
         data = event['data']
 
         if event_type == 'updateData' or event_type == 'dataStream':
-            trial_number = data['trial_number']
-            session_id = data.pop('session_id')
-            this_trial = Trial.objects.filter(session_id = session_id, trial_number = trial_number)[0]
-
-            DataPoint.objects.create(
-                trial= this_trial,
-                timestamp= data['timestamp'],
-                is_stim= data['is_stim'],
-                is_port_open= data['is_port_open'],
-                is_tone= data['is_tone'],
-                is_led_on= data['is_led_on'],
-                is_licking= data['is_licking'],
-                is_false_alarm= data['is_false_alarm'])
-
-            async_to_sync(self.channel_layer.group_send)(
-                'browser',
-                {
-                    'type': 'updateData',
-                    'data': data
-                }
-            )
+            self.handle_update_data(data)
 
         elif event_type == 'initTrial':
             Trial.objects.create(**data)
@@ -185,6 +179,30 @@ class BoxConsumer(WebsocketConsumer):
         else:
             print('some other event gotten')
             print(text_data)
+
+
+    def handle_update_data(self,data):
+        trial_number = data['trial_number']
+        session_id = data.pop('session_id')
+        this_trial = Trial.objects.filter(session_id = session_id, trial_number = trial_number)[0]
+
+        DataPoint.objects.create(
+            trial= this_trial,
+            timestamp= data['timestamp'],
+            is_stim= data['is_stim'],
+            is_port_open= data['is_port_open'],
+            is_tone= data['is_tone'],
+            is_led_on= data['is_led_on'],
+            is_licking= data['is_licking'],
+            is_false_alarm= data['is_false_alarm'])
+
+        async_to_sync(self.channel_layer.group_send)(
+            'browser',
+            {
+                'type': 'updateData',
+                'data': data
+            }
+        )
 
     def startSession(self, data):
         self.send(text_data=json.dumps(data))

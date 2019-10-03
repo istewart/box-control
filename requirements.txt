@@ -2,3 +2,6 @@ django
 channels
 django-cors-headers
 channels_redis
+websockets
+numpy
+psychopy
