@@ -4,7 +4,7 @@ from asgiref.sync import async_to_sync
 from experiments.analytics import get_overall_session_performance
 from experiments.models import Animal, Session, Trial, DataPoint, StimSet
 from django.forms.models import model_to_dict
-
+import datetime
 
 class SocketConsumer(WebsocketConsumer):
     def connect(self):
@@ -27,11 +27,7 @@ class SocketConsumer(WebsocketConsumer):
 
     def updateData(self, data):
         #called when BoxConsumers get new data
-        event = {}
-        event['data'] = data['data']
-        event['type'] = 'updateData'
-
-        self.send(text_data=json.dumps(event))
+        self.send(text_data=json.dumps(data))
 
     def initTrial(self, data):
         #called when BoxConsumers start a new trial
@@ -40,15 +36,9 @@ class SocketConsumer(WebsocketConsumer):
     def performanceUpdate(self, data):
         self.send(text_data=json.dumps(data))
 
-    def initiate_session(self, data):        
-        animal_id = data['animalId']
-        if len(Animal.objects.filter(id__iexact=animal_id))==0:
-            # TODO: make mouse id check return an error, not just create
-            # TEMP: just create one
-            Animal.objects.create(id = animal_id)
-
-        this_animal = Animal.objects.filter(id__iexact=animal_id)[0]
-
+    def initiate_session(self, data):
+        this_animal = self.handle_get_animal(data['animalId'])      
+        print('starting a session')
         # create the session object
         session = Session.objects.create(
             animal = this_animal,
@@ -57,31 +47,106 @@ class SocketConsumer(WebsocketConsumer):
             optogenetics = data['optogenetics'],
             background_lum = data['backgroundLuminensce'],
             )
-        #create the stim sets
-        stim_sets = [
-                StimSet.objects.create(
-                    session=session,
-                    size=data['sizeOne'],
-                    should_lick=True,
-                ),
-                StimSet.objects.create(
-                    session=session,
-                    size=0,
-                    should_lick=False,
-                ),
-            ]
 
+        #create the stim sets
+        #TODO: this is nonsense
+        tier = data['tier']
+        if tier==1:
+            stim_sets = [
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=int(data['sizeOne']),
+                        should_lick=True,
+                        overall_weight=3,
+                    ),
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=int(data['sizeTwo']),
+                        should_lick=True,
+                        overall_weight=3,
+                    ),
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=0,
+                        should_lick=False,
+                    ),
+                ]
+        elif tier==2:
+            stim_sets = [
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=int(data['sizeOne']),
+                        should_lick=True,
+                        overall_weight=3,
+                    ),
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=int(data['sizeTwo']),
+                        should_lick=True,
+                        overall_weight=3,
+                    ),
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=0,
+                        should_lick=False,
+                        overall_weight=2,
+                    ),
+                ]
+        elif tier==3:
+            stim_sets = [
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=int(data['sizeOne']),
+                        should_lick=True,
+                        overall_weight=1,
+                    ),
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=int(data['sizeTwo']),
+                        should_lick=True,
+                        overall_weight=1,
+                    ),
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=0,
+                        should_lick=False,
+                        overall_weight=1,
+                    ),
+                ]
+        else:
+            print('INVALID TIER')
+            stim_sets = [
+                    StimSet.objects.create(
+                        session=session,
+                        stim_size=0,
+                        should_lick=2,
+                    ),
+                ]
+
+        data = model_to_dict(session)
+        print('dictified session', data)
         data['session_id'] = session.id
         data['stim_sets'] = [model_to_dict(stim_set) for stim_set in stim_sets]
 
         # TODO: check if anyone is in this channel group, send error
         async_to_sync(self.channel_layer.group_send)(
-            data['boxNumber'],
+            data['box_number'],
             {
                 'type': 'startSession',
                 'data': data
             }
         )
+
+    def handle_get_animal(self, animal_id):
+        if len(Animal.objects.filter(id__iexact=animal_id))==0:
+            # TODO: make mouse id check return an error, not just create
+            # TEMP: just create one
+            Animal.objects.create(id = animal_id,
+                genotype='aa',
+                date_of_birth=datetime.date.today(),
+                sex='n',)
+
+        return Animal.objects.filter(id__iexact=animal_id)[0]
 
     def pause_session(self, data):
         async_to_sync(self.channel_layer.group_send)(
@@ -91,8 +156,6 @@ class SocketConsumer(WebsocketConsumer):
                 'data': data
             }
         )
-
-
 
     def receive(self, text_data):
         event = json.loads(text_data)
@@ -179,7 +242,6 @@ class BoxConsumer(WebsocketConsumer):
         else:
             print('some other event gotten')
             print(text_data)
-
 
     def handle_update_data(self,data):
         trial_number = data['trial_number']

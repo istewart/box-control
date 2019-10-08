@@ -36,6 +36,8 @@
   background: #487ce4;
   color: white;
   border: none;
+  display: block;
+  margin-bottom: 8px;
 }
 
 .sessions {

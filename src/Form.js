@@ -10,10 +10,10 @@ export class Form extends React.Component {
       tier: 1,
       optogenetics: 'None',
       mW: 0,
-      backgroundLuminensce: 32,
+      backgroundLuminensce: 128,
       sizeOne: 90,
       sizeTwo: 0,
-      contrastLevels: [255],
+      contrastLevels: [100],
 
       socket: new WebSocket('ws://0.0.0.0:8000/sockets/socket.io/'),
       dataPoints: [],

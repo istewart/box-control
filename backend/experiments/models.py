@@ -27,6 +27,7 @@ class Animal(models.Model):
   A mouse that performs sessions.
   """
   id = models.CharField(primary_key=True, max_length=64)
+  ear_tag = models.CharField(max_length=10)
   genotype = models.CharField(max_length=64) 
   date_of_birth = models.DateField(auto_now_add=False)
   training_start = models.DateField(auto_now_add=True)
@@ -39,7 +40,7 @@ class Session(models.Model):
   """
   id = models.AutoField(primary_key=True)
 
-  date = models.DateField(auto_now_add=True)
+  date = models.DateTimeField(auto_now_add=True)
 
   animal = models.ForeignKey(Animal, on_delete=models.CASCADE)
   
@@ -91,7 +92,11 @@ class StimSet(models.Model):
   temporal_freq = models.FloatField(default=2) #Hz
   position_x = models.FloatField(default=0) #deg
   position_y = models.FloatField(default=0) #deg
-  size = models.IntegerField()
+  stim_size = models.IntegerField()
+  orientation = models.PositiveIntegerField(
+    default=225,
+    validators=[MaxValueValidator(360)]
+    )
 
   #contrast and contrast weights
   #TODO! Can't Decide
@@ -106,6 +111,7 @@ class Trial(models.Model):
   """
   A short trial in which an animal is shown a stimulus and then
   may or may not respond.
+  TODO: make this log more of the actual trial fields
   """
   id = models.AutoField(primary_key=True)
   session = models.ForeignKey(Session, on_delete=models.CASCADE)
