@@ -13,14 +13,23 @@ code {
 }
 
 h4{
-	font-size: 12;
+	font-size: 8;
 }
+
 
 .row {
   display: flex;
 }
 
-.column {
-  flex: 50%;
-  margin: 10px 10px;
+.left-column {
+  flex: 30%;
+  margin: 20px 20px;
+  padding: 20px;
+}
+
+.right-column {
+  flex: 70%;
+  margin: 20px 20px;
+  padding: 20px;
+
 }

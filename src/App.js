@@ -4,7 +4,7 @@ import {Form} from './Form.js';
 import {Sessions} from './Sessions.js';
 import './App.css';
 import 'react-vis/dist/style.css';
-import {XYPlot, LineSeries, XAxis, YAxis, HorizontalGridLines} from 'react-vis';
+import {XYPlot, LineSeries, VerticalBarSeries, XAxis, YAxis, HorizontalGridLines} from 'react-vis';
 
 const colorsByColumn = {
   is_stim: "palevioletred",
@@ -17,17 +17,21 @@ const labelsByNumber = {
   .5: 'stim',
   2.5: 'lick',
   4.5: 'reward'
-}
+};
+
+const binnedData = 
+  [{x: 20, y: .6}, {x: 40, y: .7},{x: 60, y: .5}];
+
 
 
 class App extends React.Component {
   state = {
     trial_number: 'NA',
-    stim_size: 'Unknown',
-    contrast: 'Unknown',
-    trial_count: 'Unknown',
-    hits: 'Unknown',
-    false_alarms: 'Unknown',
+    stim_size: 'NA',
+    contrast: 'NA',
+    trial_count: 'NA',
+    hits: 'NA',
+    false_alarms: 'NA',
     sessions: [],
     data: [],
   };
@@ -78,18 +82,23 @@ class App extends React.Component {
           />
           <div className="center-panel">
             <div className = 'row'>
-              <div classname = 'column'>
+              <div classname = 'left-column'>
+                //TODO: Space these right
                 <h4>Trial Number: {this.state.trial_number}</h4>
                 <h4>Size: {this.state.stim_size}</h4>
                 <h4>Contrast: {this.state.contrast}</h4>
               </div>
-              <div classname = 'column'>
-                <h4>Hit %: {this.state.hits}</h4>
-                <h4>FA %: {this.state.false_alarms}</h4>
+              <div classname = 'right-column' >
+                <h4>Hit %: {this.state.hits}   FA %: {this.state.false_alarms}</h4>
+              
+              
+                <XYPlot height={100} width={200}>
+                  <VerticalBarSeries data={binnedData} />
+                </XYPlot>
               </div>
             </div>
             <div className="graphs">
-              <XYPlot height={300} width={400} >
+              <XYPlot height={300} width={600} >
                 {['is_stim', 'is_licking', 'is_port_open'].map(
                   (column, i) => (
                       <LineSeries
@@ -109,6 +118,7 @@ class App extends React.Component {
               </XYPlot>
             </div>
           </div>
+          
           <Sessions sessions={this.state.sessions} />
         </header>
       </div>

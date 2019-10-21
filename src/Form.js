@@ -15,7 +15,7 @@ export class Form extends React.Component {
       sizeTwo: 0,
       contrastLevels: [100],
 
-      socket: new WebSocket('ws://0.0.0.0:8000/sockets/socket.io/'),
+      socket: new WebSocket('ws://128.32.19.131:8000/sockets/socket.io/'),
       dataPoints: [],
     };
 
@@ -51,7 +51,7 @@ export class Form extends React.Component {
         const session = {
             animalId: this.state.animalId,
             boxNumber: this.state.boxNumber,
-            tier: this.state.tier,
+            tier: +(this.state.tier), //converts to int?
             optogenetics: this.state.optogenetics,
             backgroundLuminensce: this.state.backgroundLuminensce,
             mW: this.state.mW,
